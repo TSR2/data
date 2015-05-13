@@ -1,0 +1,6 @@
+package:app,pre,modeling  內 scheduling data
+
+
+有關cart  r上的cart package
+
+時間序列，打註解，想法，寄圖表給老師
