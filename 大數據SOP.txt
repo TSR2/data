@@ -1,0 +1,327 @@
+1. 確定存取後台hadoop的方法
+http://<driver-node>:4040
+hadoop fs ...
+sc.statusTracker().getActiveJobsIds()
+sc.version
+sc.defaultParallelism
+確定python可以模組化 sc.addPyFiles()
+確定可以多執行緒
+
+2. 清洗資料
+檢查資料格式
+組織成DataFrame之後存檔成
+先使用一個檔案來做測試
+
+
+3. 加入新欄位
+
+
+4. 群組計算
+先使用抽樣sample()來做測試
+combineByKey
+多執行緒
+將統計檔寫入客戶端
+
+
+
+5. 可視化
+
+使用R來進行可視化
+
+
+### 原本的欄位
+Tool Table
+--------------------------------------------------------------
+名稱			群組	型別	單位	說明
+ToolID				字串	機台
+
+WaferId				字串		晶圓的唯一編號
+LotID				字串		批號
+WaferSeq			整數	順序	晶圓在組中的順序
+Part				整數
+Stage				整數
+Process				字串
+Chamber				整數	編號
+Recipe				字串	配方
+(X)TimeStamp			時間	時間
+(X)Action			字串	動作
+
+
+
+### 新增欄位
+Tool Table
+--------------------------------------------------------------
+名稱			群組	型別	單位	說明			算法
+ToolLoadOrder		Stage	整數	順序	組中進入機台的順序	
+ToolUnloadOrder		Stage	整數	順序	組中離開機台的順序	
+ChamberLoadOrder		整數	順序	組中進入機艙的順序	rank(t[TOOL_LOGIN] - t[CHAMBER_LOGIN])
+ChamberUnloadOrder		整數	順序	組中離開機艙的順序	rank(t[CHAMBER_LOGOUT] - t[TOOL_LOGOUT])
+QueueTime		Stage	整數	秒	機台間的等待時間	t[LOGIN] - t'[LOGOUT]
+ProcessTime		Stage	整數	秒	在機台內的時間		t[LOGOUT] - t[LOGIN]
+AfterCleanTime		Stage	整數	秒	距離上次機台Clean的時間	t[LOGIN] - t'[CLEAN]
+Time				整數	秒	處理的時間		t[LOGIN] - tC[FRIST]
+NextTool			字串	機台	下一個機台的Id
+PrevTool			字串	機台
+Yield				浮點	良率	晶圓的良率
+
+
+Tool Table
+---------------------
+名稱			群組	型別	單位	說明			算法
+ToolLoginOrder
+ToolLogoutOrder		
+ToolLoginTime
+ToolLogoutTime
+ToolQueueTime
+ToolProcessTime
+AfterCleanTime
+ToolPrevPart
+ToolPrevStage
+WaferPrevToolID
+WaferPrevProcess
+
+
+Chamber Table
+---------------------
+名稱			群組	型別	單位	說明			算法
+Chamber
+Recipe				字串	配方
+ChamberLoginOrder
+ChamberLogoutOrder
+ChamberLoginTime
+ChamberLogoutTime
+ChamberQueueTime
+ChamberProcessTime
+ChamberPrevWaferSeq
+ChamberPrevPecipe
+WaferPrevChamber			
+WaferPrevRecipe			字串	配方	下一個配方的Id
+
+
+
+Wafer Table
+-------------------------------------------------------------
+LotID					晶圓組
+WaferId					晶圓在組中的順序
+Part
+FinishTime
+TotalQueueTime
+TotalProcessTime
+TotalAfterCleanTime
+Yield					良率
+
+
+
+### 分群方法
+
+1. Part
+2. Part & Stage
+
+3. Tool
+4. Tool & Chamber
+
+
+
+groupMean = mean([g.mean for g in group])
+groupVar = mean([g.var for g in group])
+groupedMeanVar = var([g.mean for g in group])
+groupedVarVar = var([g.var for g in group])
+
+
+EX: Part & Tool : Part
+
+Part1(summ)	groupMean:0.56,groupVar:0.30,groupedMeanVar:?,groupedVarVar:?
+Part1(mean) 	0.80,0.70
+Part1(var)	0.30,0.30
+Part1(group)	Tool1,Tool2
+
+Part2(summ)	groupMean:0.56,groupVar:0.30,groupedMeanVar:?,groupedVarVar:?
+Part2(mean) 	0.80,0.70
+Part2(var)	0.30,0.30
+Part2(group)	Tool1,Tool2
+
+
+
+
+
+
+#### Part : *
+產品線的影響
+
+
+#### WaferGroup[] : *
+出廠順序的影響
+
+
+#### WaferId : *
+組中順序的影響
+
+
+
+
+#### Part & Tool : Part
+可以看出機台本身對於良率的影響
+
+#### Part & Tool & Chamber : Part & Tool
+可以看出反應爐對於良率的影響
+
+#### Part & Stage & Time : Part & Stage
+時間對於良率的影響，是不是隨著時間經過機台更加老舊，所以良率惡化?
+
+#### Part & Stage & AfterCleanTime : Part & Stage
+清洗對於良率的影響
+
+#### Part & Stage & WaferId: Part & Stage
+組中順序對於良率的影響
+
+#### Part & Stage & ProcessTime: Part & Stage
+待在機台內時間多寡的影響
+
+
+
+
+#### Part & FromTool-ToTool : Part
+可以看出在傳輸過程的路徑的影響
+
+#### Part & FromTool-ToTool & QueueTime: Part & FromTool-ToTool
+傳輸過程中等待時間的影響
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+RDD.min() RDD.max() RDD.mean() RDD.sum()
+這些都會回傳浮點數, 而且只有在record=數字類型, 才能夠用
+
+?RDD.count()		取得資料筆數
+?RDD.take(n)		從頭拿取n筆資料(也有可能從中間拿)
+?RDD.filter(f)		f用來過濾record, 如果f(r1)為False, 則把該record剔除
+?RDD.map(f)		f用來轉換record, record=f(r1)
+?RDD.distinct()		轉換成無重複值的RDD
+
+RDD,keyBy(f) -> kRDD	f用來取出key
+RDD.groupBy(f) -> gRDD	f用來取出key, 之後把同屬一個key的value集合為一個list, record=(key, [v1, v2, v3...])
+			!! key可以是元組, 例如 key=(v1, v2, v3)
+kRDD.sortByKey()	根據key來排序
+kRDD.keys() -> RDD	record=r1[0]
+kRDD.values() -> RDD	record=r1[1]
+
+RDD.zip(other) -> RDD	水平混和兩個RDD, record=(r1, r2)
+kRDD.join(other)	對兩個有key的RDD混和 record=(key, (r1, r2)), key必須兩邊都存在
+RDD.intersection(other)	對兩個RDD混和, 只留下兩邊都存在的值
+
+kRDD.flatMapValues(f) -> kRDD	可以還原groupBy(), 把record=(key, [v1, v2...])打散成 record=(key, v1), (key, v2)
+				f必須接受list, 回傳list.
+kRDD.mapValues(f) -> kRDD	不改變key的情況下只對value做map
+	
+
+seconddiff(t1, t2)	算出時間t1 - t2, 回傳的單位為整數秒
+show(list)		漂亮的印出結果
+
+
+
+
+(O)1. 總共有幾台tool 會進行Clean? (5%) Ans: ____台
+
+
+(E)2. 哪些tool類型，wafer在機台內加工方式是 “ Parallel ” ? (5%) (混合型不屬於parallel) 
+# Parallel 的定義是: 同個stage內某片wafer經過一次chamber
+Ans: ____類型、____類型、____類型等 (並非僅有3個tool類型，請列出所有類型)
+df1 = df.filter(waferID != None)
+df2 = df1.groupBy(stage, action, waferID)
+all(df2.mapValues(len(v)) == 1)
+
+
+3. 哪些tool類型，是一整批貨同時加工，而非一片一片按順序加工? (5%)
+Ans: ____類型、____類型、____類型等 (並非僅有3個tool類型，請列出所有類型)
+
+
+(O)4. 總共有多少批lot為非滿批的lot? (5%) Ans: ____批
+# 滿批或非滿批是指尚未加工之前
+df1 = df.groupBy(lotID)
+df1.mapValues(max(map(waferSeq, v)))
+df1.filter(v<25).count()
+
+
+(E)5. 哪些tool類型， wafer id 與slot 順序為反向? (5%)  
+Ans: ____類型、____類型、____類型(並非僅有3個tool類型，請列出所有類型)
+not all((WaferSeq - Slot) == 0)
+
+
+(O)6. 請計算PART1 lot 從stage269到stage270 中間的等待時間 (Q-time by lot)(10%) (註: 以lot為
+單位, 不管包含幾片wafer都同視為一筆資料) 
+# Q-time by lot: 該批lot 在前一個站點結束到下一個站點開始前的時間
+Ans: ____秒? 
+df1 = df.filter(stage=269 and action='LOGOUT_TOOL').sortBy(waferID)
+df2 = df.filter(stage=270 and action='LOGIN_TOOL').sortBy(waferID)
+df3 = df1.zip(df2)
+df4 = df3.map(seconddiff(time1, time2))
+df4.mean()
+
+##map(groupBy(merge(df1, df2), waferID), abs(d[0] - d[1])).mean()
+
+
+(-)7. 請計算H類型tool進行Clean的平均時間 (10%)
+Ans: ____秒?
+df1 = df.filter(action='TOOL_CLEAN_START').sortBy(time)
+df2 = df.filter(action='TOOL_CLEAN_FINISH').sortBy(time)
+df3 = df1.zip(df2)
+df4 = df3.map(seconddiff(time1, time2))
+df4.mean()
+
+
+
+(O)8. 請計算在stage153之下，各種recipe平均的process time是否有所不同. (10%)
+Ans: chamber1 ____秒、chamber 2 ____秒 等 (2個chamber僅為舉例)
+##df0 = groupBy(filter(stage=153), recipe)
+df0 = df.filter(stage=153)
+df1 = df0.filter(action='LOGIN_CHB').sortBy(waferID, chamber)
+df2 = df0.filter(action='LOGOUT_CHB').sortBy(waferID, chamber)
+df3 = df1.zip(df2)
+df4 = df3.map(seconddiff(time1, time2))
+df5 = df4.groupBy(recipe)
+df6 = df5.mapValues(mean(v))
+
+
+(E)9. 請計算在stage278底下，lot LT0310每片wafer由chamber1 transfer到chamber2的Transfer time (10%)
+Ans: 
+LT0310.01 ____秒
+LT0310.02 ____秒
+LT0310.03 ____秒
+.....
+df0 = df.filter(stage=278 and lot='LT0310')
+df1 = df0.filter(chamber=1 and action='LOGOUT_CHB').keyAs(waferId)
+df2 = df0.filter(chamber=2 and action='LOGIN_CHB').keyAs(waferId)
+df3 = df1.join(df2)
+df4 = df3.map(seconddiff(time1, time2))
+
+
+10. 造成晶圓低良率關鍵因素：_____、______、... (關鍵因素可能不只一個)
+
+
+
+
